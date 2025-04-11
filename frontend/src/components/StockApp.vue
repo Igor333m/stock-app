@@ -1,227 +1,68 @@
 <template>
   <div class="stock-app">
-    <h1>Stock Ticker App</h1>
-    
-    <div class="search-section">
-      <div class="search-container">
-        <input 
-          type="text" 
-          v-model="searchQuery" 
-          @input="debouncedSearch"
-          placeholder="Search for stocks..."
-          class="search-input"
-        />
-        <div v-if="stocksStore.loading" class="loading">Loading...</div>
-      </div>
-      
-      <div class="filter-options">
-        <label class="checkbox-container">
-          <input type="checkbox" v-model="usExchangeOnly" @change="debouncedSearch">
-          <span class="checkbox-text">US Exchange Only</span>
-        </label>
-      </div>
-      
-      <div v-if="stocksStore.error" class="error-message">
-        {{ stocksStore.error }}
-      </div>
-      
-      <div v-if="stocksStore.searchResults.length > 0" class="search-results">
-        <div 
-          v-for="result in filteredResults" 
-          :key="result.symbol"
-          @click="getStockQuote(result.symbol)"
-          class="search-result-item"
-        >
-          <div class="symbol">{{ result.symbol }}</div>
-          <div class="description">{{ result.description }}</div>
-          <div class="exchange">{{ result.type || 'Stock' }} - {{ result.exchange }}</div>
-        </div>
-      </div>
-      
-      <div v-else-if="searchQuery && !stocksStore.loading" class="no-results">
-        No results found. Try another search term.
-      </div>
+    <div class="app-header">
+      <img src="../assets/logo.svg" alt="Stock Ticker Logo" class="app-logo" />
+      <h1>Stock Ticker App</h1>
     </div>
     
-    <div v-if="stocksStore.currentStock" class="stock-details">
-      <div class="details-header">
-        <div>
-          <h2>{{ stocksStore.currentStock.name }} ({{ stocksStore.currentStock.symbol }})</h2>
-          <div class="stock-meta" v-if="stocksStore.currentStock.exchange">
-            {{ stocksStore.currentStock.exchange }} 
-            <span v-if="stocksStore.currentStock.country">, {{ stocksStore.currentStock.country }}</span>
-            <span v-if="stocksStore.currentStock.currency">, {{ stocksStore.currentStock.currency }}</span>
-          </div>
-          <div class="stock-industry" v-if="stocksStore.currentStock.industry">
-            {{ stocksStore.currentStock.industry }}
-          </div>
-          <div class="price-container">
-            <span class="price">${{ stocksStore.currentStock.price?.toFixed(2) }}</span>
-            <span 
-              class="change" 
-              :class="stocksStore.currentStock.change && stocksStore.currentStock.change >= 0 ? 'positive' : 'negative'"
-            >
-              {{ stocksStore.currentStock.change?.toFixed(2) }} 
-              ({{ stocksStore.currentStock.percentChange?.toFixed(2) }}%)
-            </span>
-          </div>
-        </div>
-        <button @click="saveStock(stocksStore.currentStock.symbol)" class="save-button">
-          Save to Watchlist
-        </button>
-      </div>
-      
-      <div class="detail-grid">
-        <div class="detail-item">
-          <div class="label">Open</div>
-          <div class="value">${{ stocksStore.currentStock.open?.toFixed(2) }}</div>
-        </div>
-        <div class="detail-item">
-          <div class="label">Previous Close</div>
-          <div class="value">${{ stocksStore.currentStock.previousClose?.toFixed(2) }}</div>
-        </div>
-        <div class="detail-item">
-          <div class="label">Day's High</div>
-          <div class="value">${{ stocksStore.currentStock.high?.toFixed(2) }}</div>
-        </div>
-        <div class="detail-item">
-          <div class="label">Day's Low</div>
-          <div class="value">${{ stocksStore.currentStock.low?.toFixed(2) }}</div>
-        </div>
-      </div>
-      
-      <button @click="clearCurrentStock" class="clear-button">
-        Back to Search
-      </button>
-    </div>
+    <!-- Using the StockSearch component -->
+    <StockSearch
+      :searchResults="stocksStore.searchResults"
+      :loading="stocksStore.loading"
+      :error="stocksStore.error"
+      @search="handleSearch"
+      @select-stock="getStockQuote"
+    />
     
-    <div class="saved-stocks-section">
-      <h2>Your Watchlist</h2>
-      
-      <div v-if="stocksStore.savedStocks.length === 0" class="no-saved-stocks">
-        No stocks saved yet. Search and save some stocks to see them here.
-      </div>
-      
-      <div v-else class="saved-stocks-list">
-        <div 
-          v-for="stock in stocksStore.savedStocks" 
-          :key="stock.id" 
-          class="saved-stock-item"
-        >
-          <div class="saved-stock-info">
-            <div class="symbol-name">
-              <span class="symbol">{{ stock.symbol }}</span>
-              <span class="name">{{ stock.name }}</span>
-            </div>
-            <div class="price-change">
-              <span class="price">${{ stock.price?.toFixed(2) }}</span>
-              <span 
-                class="change" 
-                :class="stock.change && stock.change >= 0 ? 'positive' : 'negative'"
-              >
-                {{ stock.change?.toFixed(2) }}
-              </span>
-            </div>
-          </div>
-          <div class="saved-stock-actions">
-            <button @click="getStockQuote(stock.symbol)" class="view-button">
-              View
-            </button>
-            <button @click="deleteStock(stock.id)" class="delete-button">
-              Remove
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Using the StockDetails component -->
+    <StockDetails 
+      v-if="stocksStore.currentStock"
+      :stock="stocksStore.currentStock"
+      @save-stock="saveStock"
+      @clear-stock="clearCurrentStock"
+    />
     
-    <!-- News section -->
-    <div class="news-section">
-      <h2>Latest Financial News</h2>
-      
-      <div v-if="stocksStore.loading && !stocksStore.newsArticles.length" class="loading-news">
-        Loading latest news...
-      </div>
-      
-      <div v-else-if="stocksStore.error && !stocksStore.newsArticles.length" class="error-message">
-        {{ stocksStore.error }}
-      </div>
-      
-      <div v-else-if="!stocksStore.newsArticles.length" class="no-news">
-        No news articles available at the moment.
-      </div>
-      
-      <div v-else class="news-grid">
-        <a 
-          v-for="article in stocksStore.newsArticles" 
-          :key="article.id"
-          :href="article.url"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="news-card"
-        >
-          <div class="news-image-container">
-            <img 
-              v-if="article.image" 
-              :src="article.image" 
-              :alt="article.headline"
-              class="news-image"
-            />
-            <div v-else class="news-image-placeholder">
-              <span>{{ article.source }}</span>
-            </div>
-          </div>
-          
-          <div class="news-content">
-            <h3 class="news-headline">{{ article.headline }}</h3>
-            <p class="news-summary">{{ truncateSummary(article.summary) }}</p>
-            <div class="news-meta">
-              <span class="news-source">{{ article.source }}</span>
-              <span class="news-date">{{ formatDate(article.datetime) }}</span>
-            </div>
-          </div>
-        </a>
-      </div>
-    </div>
+    <!-- Using other components -->
+    <StockWatchlist 
+      :savedStocks="stocksStore.savedStocks"
+      @view-stock="getStockQuote"
+      @delete-stock="deleteStock"
+    />
+    
+    <FinancialNews 
+      :newsArticles="stocksStore.newsArticles"
+      :loading="stocksStore.loading"
+      :error="stocksStore.error"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { onMounted } from 'vue';
 import { useStocksStore } from '../stores/stocks';
+import StockWatchlist from './StockWatchlist.vue';
+import FinancialNews from './FinancialNews.vue';
+import StockDetails from './StockDetails.vue';
+import StockSearch from './StockSearch.vue';
 
 const stocksStore = useStocksStore();
-const searchQuery = ref('');
-const usExchangeOnly = ref(true);
-let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 onMounted(() => {
   stocksStore.getSavedStocks();
   stocksStore.getNews('general');
 });
 
-const debouncedSearch = () => {
-  if (searchTimeout) {
-    clearTimeout(searchTimeout);
+const handleSearch = (query: string, usExchangeOnly: boolean) => {
+  if (query.trim()) {
+    stocksStore.searchStocks(query, usExchangeOnly);
+  } else {
+    stocksStore.clearSearchResults();
   }
-  
-  searchTimeout = setTimeout(() => {
-    if (searchQuery.value.trim()) {
-      stocksStore.searchStocks(searchQuery.value, usExchangeOnly.value);
-    } else {
-      stocksStore.clearSearchResults();
-    }
-  }, 500);
 };
-
-const filteredResults = computed(() => {
-  return stocksStore.searchResults;
-});
 
 const getStockQuote = (symbol: string) => {
   stocksStore.getStockQuote(symbol);
   stocksStore.clearSearchResults();
-  searchQuery.value = '';
 };
 
 const saveStock = (symbol: string) => {
@@ -235,23 +76,6 @@ const deleteStock = (id?: number) => {
 const clearCurrentStock = () => {
   stocksStore.clearCurrentStock();
 };
-
-// Format date to a readable format
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric'
-  });
-};
-
-// Truncate long summary text
-const truncateSummary = (summary: string, maxLength: number = 120) => {
-  if (summary.length <= maxLength) return summary;
-  return summary.substring(0, maxLength) + '...';
-};
 </script>
 
 <style scoped>
@@ -263,320 +87,33 @@ const truncateSummary = (summary: string, maxLength: number = 120) => {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-h1, h2 {
-  color: #333;
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 30px;
+  gap: 15px;
+}
+
+.app-logo {
+  width: 50px;
+  height: 50px;
+  animation: pulse 3s infinite alternate;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.05);
+  }
 }
 
 h1 {
-  margin-bottom: 30px;
+  color: #333;
+  margin: 0;
   text-align: center;
-}
-
-.search-section {
-  position: relative;
-  margin-bottom: 30px;
-}
-
-.search-container {
-  display: flex;
-  align-items: center;
-}
-
-.search-input {
-  width: 100%;
-  padding: 12px 16px;
-  font-size: 16px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.search-input:focus {
-  border-color: #4a6cf7;
-}
-
-.search-results {
-  position: absolute;
-  width: 100%;
-  max-height: 300px;
-  overflow-y: auto;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  margin-top: 5px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-}
-
-.search-result-item {
-  padding: 12px 16px;
-  cursor: pointer;
-  border-bottom: 1px solid #eee;
-  transition: background-color 0.2s;
-}
-
-.search-result-item:last-child {
-  border-bottom: none;
-}
-
-.search-result-item:hover {
-  background-color: #f5f8ff;
-}
-
-.search-result-item .symbol {
-  font-weight: bold;
-  color: #333;
-}
-
-.search-result-item .description {
-  font-size: 14px;
-  color: #666;
-  margin-top: 4px;
-}
-
-.search-result-item .exchange {
-  font-size: 12px;
-  color: #888;
-  margin-top: 4px;
-}
-
-.filter-options {
-  margin-top: 10px;
-  margin-bottom: 5px;
-}
-
-.checkbox-container {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  user-select: none;
-}
-
-.checkbox-container input {
-  margin-right: 8px;
-  cursor: pointer;
-}
-
-.checkbox-text {
-  font-size: 14px;
-  color: #555;
-}
-
-.stock-details {
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 30px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.stock-meta {
-  font-size: 14px;
-  color: #666;
-  margin-top: 4px;
-}
-
-.stock-industry {
-  font-size: 14px;
-  color: #555;
-  margin-top: 4px;
-  font-style: italic;
-}
-
-.details-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 20px;
-}
-
-.price-container {
-  display: flex;
-  align-items: center;
-  margin-top: 10px;
-}
-
-.price {
-  font-size: 24px;
-  font-weight: bold;
-  margin-right: 10px;
-}
-
-.change {
-  font-size: 18px;
-  font-weight: 500;
-}
-
-.positive {
-  color: #28a745;
-}
-
-.negative {
-  color: #dc3545;
-}
-
-.save-button {
-  background-color: #4a6cf7;
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background-color 0.2s;
-}
-
-.save-button:hover {
-  background-color: #3a5ce5;
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.detail-item {
-  background-color: white;
-  padding: 12px;
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.label {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 4px;
-}
-
-.value {
-  font-size: 18px;
-  font-weight: 500;
-  color: #333;
-}
-
-.clear-button {
-  background-color: #f8f9fa;
-  color: #333;
-  border: 1px solid #ddd;
-  padding: 8px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.clear-button:hover {
-  background-color: #e9ecef;
-}
-
-.saved-stocks-section h2 {
-  margin-bottom: 16px;
-}
-
-.saved-stocks-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 16px;
-}
-
-.saved-stock-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: white;
-  padding: 16px;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  transition: transform 0.2s;
-}
-
-.saved-stock-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.saved-stock-info {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.symbol-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.symbol-name .symbol {
-  font-weight: bold;
-  color: #333;
-}
-
-.symbol-name .name {
-  color: #666;
-  font-size: 14px;
-}
-
-.price-change {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.saved-stock-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.view-button, .delete-button {
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background-color 0.2s;
-}
-
-.view-button {
-  background-color: #e9ecef;
-  color: #333;
-  border: 1px solid #ddd;
-}
-
-.view-button:hover {
-  background-color: #dde1e6;
-}
-
-.delete-button {
-  background-color: #f8d7da;
-  color: #dc3545;
-  border: 1px solid #f5c2c7;
-}
-
-.delete-button:hover {
-  background-color: #f5c2c7;
-}
-
-.no-saved-stocks, .no-results {
-  color: #666;
-  text-align: center;
-  padding: 20px;
-  background-color: #f8f9fa;
-  border-radius: 8px;
-}
-
-.error-message {
-  color: #dc3545;
-  font-size: 14px;
-  margin-top: 10px;
-  margin-bottom: 5px;
-}
-
-.loading {
-  margin-left: 12px;
-  color: #666;
 }
 
 /* Add responsive adjustments at the end */
@@ -586,163 +123,24 @@ h1 {
     padding: 15px;
   }
   
-  .detail-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .details-header {
-    flex-direction: column;
-  }
-  
-  .save-button {
-    margin-top: 15px;
-    width: 100%;
+  .app-header {
+    margin-bottom: 20px;
   }
 }
 
 @media (max-width: 480px) {
-  .detail-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .saved-stocks-list {
-    grid-template-columns: 1fr;
-  }
-  
-  .saved-stock-item {
+  .app-header {
     flex-direction: column;
+    gap: 10px;
   }
   
-  .saved-stock-actions {
-    margin-top: 12px;
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
+  .app-logo {
+    width: 40px;
+    height: 40px;
   }
   
-  .view-button, .delete-button {
-    width: 48%;
-  }
-}
-
-/* News section styles */
-.news-section {
-  margin-top: 40px;
-}
-
-.news-section h2 {
-  margin-bottom: 20px;
-}
-
-.news-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  margin-bottom: 40px;
-}
-
-.news-card {
-  display: flex;
-  flex-direction: column;
-  border-radius: 8px;
-  overflow: hidden;
-  background-color: white;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
-  text-decoration: none;
-  color: inherit;
-  height: 100%;
-}
-
-.news-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-}
-
-.news-image-container {
-  height: 180px;
-  overflow: hidden;
-  position: relative;
-}
-
-.news-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.news-image-placeholder {
-  width: 100%;
-  height: 100%;
-  background-color: #dfe6f0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #687790;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.news-content {
-  padding: 16px;
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.news-headline {
-  font-size: 18px;
-  margin-bottom: 10px;
-  line-height: 1.3;
-  color: #333;
-}
-
-.news-summary {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 12px;
-  flex-grow: 1;
-  line-height: 1.5;
-}
-
-.news-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #888;
-  margin-top: auto;
-}
-
-.news-source {
-  font-weight: 500;
-}
-
-.loading-news, .no-news {
-  text-align: center;
-  padding: 40px;
-  color: #666;
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  font-size: 16px;
-}
-
-/* Adjust responsive styles for news grid */
-@media (max-width: 992px) {
-  .news-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .news-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 580px) {
-  .news-grid {
-    grid-template-columns: 1fr;
+  h1 {
+    font-size: 24px;
   }
 }
 </style> 

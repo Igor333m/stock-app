@@ -1,0 +1,15 @@
+<svg width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="25" cy="25" r="24" fill="#4a6cf7" />
+  <circle cx="25" cy="25" r="22" fill="white" />
+  
+  <!-- Stock chart lines -->
+  <path d="M10 35 L16 28 L22 32 L28 20 L34 25 L40 15" stroke="#4a6cf7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- Trend arrow -->
+  <path d="M38 15 L40 15 L40 17" stroke="#4a6cf7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- Dollar sign -->
+  <path d="M25 15 L25 35" stroke="#4a6cf7" stroke-width="2" stroke-opacity="0.5" />
+  <path d="M21 18 C21 18, 22 16, 25 16 C28 16, 29 19, 29 20 C29 22, 27 24, 25 24 C23 24, 21 26, 21 28 C21 30, 23 32, 25 32 C27 32, 29 30, 29 30" stroke="#28a745" stroke-width="2" stroke-linecap="round" />
+</svg> 
