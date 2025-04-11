@@ -14,6 +14,11 @@ export class StocksController {
     return this.stocksService.searchStocks(query, exchange);
   }
 
+  @Get('news')
+  async getNews(@Query('category') category: string = 'general') {
+    return this.stocksService.getNews(category);
+  }
+
   @Get('quote/:symbol')
   async getStockQuote(@Param('symbol') symbol: string) {
     return this.stocksService.getStockQuote(symbol);

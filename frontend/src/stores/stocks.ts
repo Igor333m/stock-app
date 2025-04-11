@@ -23,10 +23,23 @@ interface Stock {
   updatedAt?: string;
 }
 
+interface NewsArticle {
+  category: string;
+  datetime: string;
+  headline: string;
+  id: number;
+  image: string;
+  related: string;
+  source: string;
+  summary: string;
+  url: string;
+}
+
 interface StockState {
   searchResults: any[];
   currentStock: Stock | null;
   savedStocks: Stock[];
+  newsArticles: NewsArticle[];
   loading: boolean;
   error: string | null;
 }
@@ -36,6 +49,7 @@ export const useStocksStore = defineStore('stocks', {
     searchResults: [],
     currentStock: null,
     savedStocks: [],
+    newsArticles: [],
     loading: false,
     error: null,
   }),
@@ -75,6 +89,23 @@ export const useStocksStore = defineStore('stocks', {
       } catch (error) {
         console.error('Error getting stock quote:', error);
         this.error = 'Failed to get stock quote';
+      } finally {
+        this.loading = false;
+      }
+    },
+    
+    async getNews(category: string = 'general') {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        const response = await axios.get(`${API_URL}/stocks/news?category=${category}`);
+        this.newsArticles = response.data;
+        return response.data;
+      } catch (error) {
+        console.error('Error getting news:', error);
+        this.error = 'Failed to get latest news';
+        this.newsArticles = [];
       } finally {
         this.loading = false;
       }

@@ -41,6 +41,18 @@ interface FinnhubCompanyProfile {
   type?: string;
 }
 
+interface FinnhubNewsArticle {
+  category: string;
+  datetime: number;
+  headline: string;
+  id: number;
+  image: string;
+  related: string;
+  source: string;
+  summary: string;
+  url: string;
+}
+
 @Injectable()
 export class StocksService {
   // Queue for handling API requests with rate limits
@@ -141,6 +153,33 @@ export class StocksService {
       };
     } catch (error) {
       console.error('Error getting stock quote:', error);
+      throw error;
+    }
+  }
+
+  async getNews(category: string = 'general') {
+    try {
+      // Get the current date and date from 7 days ago
+      const toDate = new Date();
+      const fromDate = new Date();
+      fromDate.setDate(fromDate.getDate() - 7);
+      
+      // Format dates as YYYY-MM-DD
+      const toDateStr = toDate.toISOString().split('T')[0];
+      const fromDateStr = fromDate.toISOString().split('T')[0];
+      
+      const newsData = await this.finnhubRequest<FinnhubNewsArticle[]>(
+        `https://finnhub.io/api/v1/news?category=${category}&from=${fromDateStr}&to=${toDateStr}`
+      );
+      
+      // Return only the first 9 news articles to keep the response manageable
+      return newsData.slice(0, 9).map(article => ({
+        ...article,
+        // Convert Unix timestamp to ISO date string for easier handling in frontend
+        datetime: new Date(article.datetime * 1000).toISOString(),
+      }));
+    } catch (error) {
+      console.error('Error getting news:', error);
       throw error;
     }
   }
