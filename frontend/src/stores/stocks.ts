@@ -14,6 +14,11 @@ interface Stock {
   low?: number;
   open?: number;
   previousClose?: number;
+  exchange?: string;
+  country?: string;
+  currency?: string;
+  industry?: string;
+  type?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -36,7 +41,7 @@ export const useStocksStore = defineStore('stocks', {
   }),
   
   actions: {
-    async searchStocks(query: string) {
+    async searchStocks(query: string, usExchangeOnly: boolean = false) {
       if (!query.trim()) {
         this.searchResults = [];
         return;
@@ -46,11 +51,14 @@ export const useStocksStore = defineStore('stocks', {
       this.error = null;
       
       try {
-        const response = await axios.get(`${API_URL}/stocks/search?q=${query}`);
+        const response = await axios.get(
+          `${API_URL}/stocks/search?q=${query}${usExchangeOnly ? '&exchange=US' : ''}`
+        );
         this.searchResults = response.data;
       } catch (error) {
         console.error('Error searching stocks:', error);
         this.error = 'Failed to search stocks';
+        this.searchResults = [];
       } finally {
         this.loading = false;
       }

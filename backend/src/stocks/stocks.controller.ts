@@ -6,8 +6,12 @@ export class StocksController {
   constructor(private readonly stocksService: StocksService) {}
 
   @Get('search')
-  async searchStocks(@Query('q') query: string) {
-    return this.stocksService.searchStocks(query);
+  async searchStocks(
+    @Query('q') query: string,
+    @Query('exchange') exchange: string
+  ) {
+    // No conversion needed, directly pass the exchange parameter
+    return this.stocksService.searchStocks(query, exchange);
   }
 
   @Get('quote/:symbol')

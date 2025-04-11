@@ -14,16 +14,32 @@
         <div v-if="stocksStore.loading" class="loading">Loading...</div>
       </div>
       
+      <div class="filter-options">
+        <label class="checkbox-container">
+          <input type="checkbox" v-model="usExchangeOnly" @change="debouncedSearch">
+          <span class="checkbox-text">US Exchange Only</span>
+        </label>
+      </div>
+      
+      <div v-if="stocksStore.error" class="error-message">
+        {{ stocksStore.error }}
+      </div>
+      
       <div v-if="stocksStore.searchResults.length > 0" class="search-results">
         <div 
-          v-for="result in stocksStore.searchResults" 
+          v-for="result in filteredResults" 
           :key="result.symbol"
           @click="getStockQuote(result.symbol)"
           class="search-result-item"
         >
           <div class="symbol">{{ result.symbol }}</div>
           <div class="description">{{ result.description }}</div>
+          <div class="exchange">{{ result.type || 'Stock' }} - {{ result.exchange }}</div>
         </div>
+      </div>
+      
+      <div v-else-if="searchQuery && !stocksStore.loading" class="no-results">
+        No results found. Try another search term.
       </div>
     </div>
     
@@ -31,6 +47,14 @@
       <div class="details-header">
         <div>
           <h2>{{ stocksStore.currentStock.name }} ({{ stocksStore.currentStock.symbol }})</h2>
+          <div class="stock-meta" v-if="stocksStore.currentStock.exchange">
+            {{ stocksStore.currentStock.exchange }} 
+            <span v-if="stocksStore.currentStock.country">, {{ stocksStore.currentStock.country }}</span>
+            <span v-if="stocksStore.currentStock.currency">, {{ stocksStore.currentStock.currency }}</span>
+          </div>
+          <div class="stock-industry" v-if="stocksStore.currentStock.industry">
+            {{ stocksStore.currentStock.industry }}
+          </div>
           <div class="price-container">
             <span class="price">${{ stocksStore.currentStock.price?.toFixed(2) }}</span>
             <span 
@@ -114,11 +138,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useStocksStore } from '../stores/stocks';
 
 const stocksStore = useStocksStore();
 const searchQuery = ref('');
+const usExchangeOnly = ref(true);
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 onMounted(() => {
@@ -131,9 +156,17 @@ const debouncedSearch = () => {
   }
   
   searchTimeout = setTimeout(() => {
-    stocksStore.searchStocks(searchQuery.value);
+    if (searchQuery.value.trim()) {
+      stocksStore.searchStocks(searchQuery.value, usExchangeOnly.value);
+    } else {
+      stocksStore.clearSearchResults();
+    }
   }, 500);
 };
+
+const filteredResults = computed(() => {
+  return stocksStore.searchResults;
+});
 
 const getStockQuote = (symbol: string) => {
   stocksStore.getStockQuote(symbol);
@@ -156,7 +189,8 @@ const clearCurrentStock = () => {
 
 <style scoped>
 .stock-app {
-  max-width: 800px;
+  max-width: 1200px;
+  width: 90%;
   margin: 0 auto;
   padding: 20px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -234,12 +268,53 @@ h1 {
   margin-top: 4px;
 }
 
+.search-result-item .exchange {
+  font-size: 12px;
+  color: #888;
+  margin-top: 4px;
+}
+
+.filter-options {
+  margin-top: 10px;
+  margin-bottom: 5px;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-container input {
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+.checkbox-text {
+  font-size: 14px;
+  color: #555;
+}
+
 .stock-details {
   background-color: #f8f9fa;
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 30px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.stock-meta {
+  font-size: 14px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.stock-industry {
+  font-size: 14px;
+  color: #555;
+  margin-top: 4px;
+  font-style: italic;
 }
 
 .details-header {
@@ -291,7 +366,7 @@ h1 {
 
 .detail-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 20px;
 }
@@ -335,9 +410,9 @@ h1 {
 }
 
 .saved-stocks-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 16px;
 }
 
 .saved-stock-item {
@@ -417,7 +492,7 @@ h1 {
   background-color: #f5c2c7;
 }
 
-.no-saved-stocks {
+.no-saved-stocks, .no-results {
   color: #666;
   text-align: center;
   padding: 20px;
@@ -425,8 +500,61 @@ h1 {
   border-radius: 8px;
 }
 
+.error-message {
+  color: #dc3545;
+  font-size: 14px;
+  margin-top: 10px;
+  margin-bottom: 5px;
+}
+
 .loading {
   margin-left: 12px;
   color: #666;
+}
+
+/* Add responsive adjustments at the end */
+@media (max-width: 768px) {
+  .stock-app {
+    width: 95%;
+    padding: 15px;
+  }
+  
+  .detail-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .details-header {
+    flex-direction: column;
+  }
+  
+  .save-button {
+    margin-top: 15px;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .saved-stocks-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .saved-stock-item {
+    flex-direction: column;
+  }
+  
+  .saved-stock-actions {
+    margin-top: 12px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .view-button, .delete-button {
+    width: 48%;
+  }
 }
 </style> 

@@ -19,6 +19,10 @@ model Stock {
   name      String?
   price     Float?
   change    Float?
+  exchange  String?
+  country   String?
+  currency  String?
+  industry  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
